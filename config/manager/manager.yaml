@@ -1,0 +1,153 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    control-plane: controller-manager
+  name: system
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: webhook-certs
+  namespace: system
+
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: webhook
+webhooks:
+  - admissionReviewVersions:
+      - v1
+      - v1beta1
+    clientConfig:
+      service:
+        name: controller-manager
+        namespace: system
+        path: /mutate
+        port: 443
+    name: mutator.ripfs.io
+    sideEffects: None
+    timeoutSeconds: 10
+    failurePolicy: Ignore
+    matchPolicy: Exact
+    rules:
+      - apiGroups:
+          - ""
+        apiVersions:
+          - v1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - pods
+        scope: Namespaced
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: controller-manager
+  namespace: system
+  labels:
+    control-plane: controller-manager
+spec:
+  type: ClusterIP
+  ports:
+    - name: tcp-swarm
+      targetPort: tcp-swarm
+      port: 4001
+    - name: tcp-webhook
+      targetPort: tcp-webhook
+      port: 443
+  selector:
+    control-plane: controller-manager
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: controller-manager
+  namespace: system
+  labels:
+    control-plane: controller-manager
+spec:
+  selector:
+    matchLabels:
+      control-plane: controller-manager
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: manager
+      labels:
+        control-plane: controller-manager
+    spec:
+      securityContext:
+#        runAsNonRoot: true
+      containers:
+      - command:
+        - /ko-app/ripfs
+        - manager
+        - "--registry=localhost:31609"    # TODO: Autodetect this?
+        - --debug
+        args:
+        - --leader-elect
+        image: controller:latest
+        imagePullPolicy: IfNotPresent
+        name: manager
+        securityContext:
+          allowPrivilegeEscalation: false
+        env:
+          - name: LIBP2P_FORCE_PNET
+            value: "1"
+          - name: NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+        ports:
+          - name: tcp-swarm
+            protocol: TCP
+            containerPort: 4001
+          - name: tcp-webhook
+            protocol: TCP
+            containerPort: 9443
+        livenessProbe:
+          httpGet:
+            port: 8001
+            path: /healthz
+#          tcpSocket:
+#            port: tcp-swarm
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          failureThreshold: 2
+        readinessProbe:
+          httpGet:
+            port: 8001
+            path: /readyz
+          initialDelaySeconds: 5
+          timeoutSeconds: 1
+          periodSeconds: 10
+        resources:
+#          limits:
+#            cpu: 500m
+#            memory: 128Mi
+          requests:
+            cpu: 500m
+            memory: 512Mi
+        volumeMounts:
+          - name: ipfs-data
+            mountPath: /data/ipfs
+          - name: webhook-certs
+            mountPath: /tmp/k8s-webhook-server/serving-certs/
+            readOnly: true
+      serviceAccountName: controller-manager
+      terminationGracePeriodSeconds: 10
+      volumes:
+        - name: ipfs-data
+          emptyDir: {}
+        - name: webhook-certs
+          secret:
+            defaultMode: 420
+            secretName: webhook-certs

@@ -1,0 +1,5 @@
+resources:
+- agents.yaml
+
+generatorOptions:
+  disableNameSuffixHash: true

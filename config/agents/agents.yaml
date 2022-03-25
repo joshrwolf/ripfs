@@ -1,0 +1,118 @@
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: agents
+  namespace: system
+  labels:
+    control-plane: agents
+spec:
+  selector:
+    matchLabels:
+      control-plane: agents
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: agents
+      labels:
+        control-plane: agents
+    spec:
+      securityContext:
+#        runAsNonRoot: true
+      containers:
+      - command:
+        - /ko-app/ripfs
+        - serve
+        image: controller:latest
+        imagePullPolicy: IfNotPresent
+        name: agent
+        securityContext:
+          allowPrivilegeEscalation: false
+        env:
+          - name: LIBP2P_FORCE_PNET
+            value: "1"
+          - name: IPFS_BOOTSTRAP_PEERS
+            valueFrom:
+              secretKeyRef:
+                name: ripfs-cluster-config
+                key: bootstrap-peers
+                optional: false
+        ports:
+          - name: tcp-registry
+            protocol: TCP
+            containerPort: 5050
+          - name: tcp-swarm
+            protocol: TCP
+            containerPort: 4001
+        livenessProbe:
+          httpGet:
+            path: /v2/
+            port: 5050
+          initialDelaySeconds: 15
+          periodSeconds: 15
+        readinessProbe:
+          httpGet:
+            path: /v2/
+            port: 5050
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+#          limits:
+#            cpu: 500m
+#            memory: 128Mi
+          requests:
+            cpu: 250m
+            memory: 512Mi
+        volumeMounts:
+          - name: ipfs-data
+            mountPath: /data/ipfs
+          - name: ipfs-swarm-key
+            mountPath: /data/ipfs/swarm.key
+            subPath: swarm.key
+      terminationGracePeriodSeconds: 10
+      volumes:
+        - name: ipfs-data
+          emptyDir: {}
+        - name: ipfs-swarm-key
+          secret:
+            secretName: ripfs-cluster-config
+            defaultMode: 0444
+            items:
+              - key: swarm.key
+                path: swarm.key
+            optional: false
+
+#---
+#apiVersion: v1
+#kind: Service
+#metadata:
+#  name: agents
+#  namespace: system
+#  labels:
+#    control-plane: agents
+#spec:
+#  type: ClusterIP
+#  ports:
+#    - name: tcp-swarm
+#      targetPort: tcp-swarm
+#      port: 4001
+#  selector:
+#    control-plane: agents
+#
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: registry
+  namespace: system
+  labels:
+    control-plane: agents
+spec:
+  type: NodePort
+  ports:
+    - name: tcp-registry
+      targetPort: tcp-registry
+      port: 5050
+      nodePort: 31609     # TODO: Autodetect this?
+  selector:
+    control-plane: agents
