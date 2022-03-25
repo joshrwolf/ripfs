@@ -50,6 +50,7 @@ publish-images:
 
     ARG GGCR_EXPERIMENT_ESTARGZ=1
     ARG KO_DOCKER_REPO=ghcr.io/joshrwolf/ripfs
+    ARG GITHUB_TOKEN
 
     COPY +ko/ko .
 
