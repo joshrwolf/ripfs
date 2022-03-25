@@ -67,6 +67,10 @@ publish-bin:
     COPY .goreleaser.yaml .goreleaser.yaml
     RUN goreleaser build --rm-dist
 
+publish
+    BUILD +publish-images
+    BUILD +publish-bin
+
 busybox:
     FROM alpine:3.15.0
 
