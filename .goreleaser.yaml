@@ -22,3 +22,7 @@ builds:
 
 universal_binaries:
   - replace: false
+
+release:
+  extra_files:
+    - glob: dist/offline/*

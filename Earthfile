@@ -32,8 +32,8 @@ setup:
 
     COPY +busybox-linux-amd64/busybox internal/k8s/offline/payload/busybox-linux-amd64
     COPY +busybox-linux-arm64/busybox internal/k8s/offline/payload/busybox-linux-arm64
-    COPY +busybox-linux-arm-v6/busybox internal/k8s/offline/payload/busybox-linux-arm-v6
-    COPY +busybox-linux-arm-v7/busybox internal/k8s/offline/payload/busybox-linux-arm-v7
+    # COPY +busybox-linux-arm-v6/busybox internal/k8s/offline/payload/busybox-linux-arm-v6
+    # COPY +busybox-linux-arm-v7/busybox internal/k8s/offline/payload/busybox-linux-arm-v7
 
 build-images:
     FROM +setup
@@ -65,7 +65,17 @@ publish-bin:
     FROM +setup
 
     COPY .goreleaser.yaml .goreleaser.yaml
+
+    COPY +offline-payload/payload.tar.gz dist/offline/offline-payload.tar.gz
     RUN goreleaser build --rm-dist
+
+offline-payload:
+    FROM busybox
+    WORKDIR /payload
+
+    COPY +build-images/oci oci/
+    RUN tar -C /payload -czvf payload.tar.gz /payload
+    SAVE ARTIFACT payload.tar.gz
 
 publish:
     BUILD +publish-images
@@ -173,7 +183,7 @@ offline-payload-save:
     COPY +busybox-linux-arm-v7/busybox busybox-linux-arm-v7
     SAVE ARTIFACT busybox-linux-arm-v7 AS LOCAL internal/k8s/offline/payload/busybox-linux-arm-v7
 
-offline-payload:
+offline-payload-local:
     FROM +offline-payload-util
     COPY +build/oci oci/.
     RUN tar -C /payload -czvf payload.tar.gz /payload
