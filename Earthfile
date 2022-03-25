@@ -67,7 +67,7 @@ publish-bin:
     COPY .goreleaser.yaml .goreleaser.yaml
     RUN goreleaser build --rm-dist
 
-publish
+publish:
     BUILD +publish-images
     BUILD +publish-bin
 
