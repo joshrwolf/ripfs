@@ -17,8 +17,8 @@ ko:
 
     SAVE ARTIFACT ko
 
-build:
-    FROM golang:1.17
+setup:
+    FROM goreleaser/goreleaser:v1.6.3
 
     WORKDIR /workspace
     COPY go.mod go.mod
@@ -30,15 +30,42 @@ build:
     COPY internal/ internal/
     COPY config/ config/
 
-    COPY +ko/ko .
     COPY +busybox-linux-amd64/busybox internal/k8s/offline/payload/busybox-linux-amd64
     COPY +busybox-linux-arm64/busybox internal/k8s/offline/payload/busybox-linux-arm64
     COPY +busybox-linux-arm-v6/busybox internal/k8s/offline/payload/busybox-linux-arm-v6
     COPY +busybox-linux-arm-v7/busybox internal/k8s/offline/payload/busybox-linux-arm-v7
 
-    RUN ./ko build ./cmd/ripfs --push=false --sbom spdx --platform linux/amd64,linux/arm64,linux/arm/v6,linux/arm/v7 --oci-layout-path oci
+build-images:
+    FROM +setup
 
+    ARG GGCR_EXPERIMENT_ESTARGZ=1
+
+    COPY +ko/ko .
+
+    RUN ./ko build ./cmd/ripfs --push=false --sbom spdx --platform linux/amd64,linux/arm64,linux/arm/v6,linux/arm/v7 --oci-layout-path oci
     SAVE ARTIFACT oci
+
+publish-images:
+    FROM +setup
+
+    ARG GGCR_EXPERIMENT_ESTARGZ=1
+    ARG KO_DOCKER_REPO=ghcr.io/joshrwolf/ripfs
+
+    COPY +ko/ko .
+
+    RUN ./ko build ./cmd/ripfs --sbom spdx --platform linux/amd64,linux/arm64,linux/arm/v6,linux/arm/v7
+
+build-bin:
+    FROM +setup
+
+    COPY .goreleaser.yaml .goreleaser.yaml
+    RUN goreleaser build --rm-dist --snapshot
+
+publish-bin:
+    FROM +setup
+
+    COPY .goreleaser.yaml .goreleaser.yaml
+    RUN goreleaser build --rm-dist
 
 busybox:
     FROM alpine:3.15.0
