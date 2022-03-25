@@ -11,6 +11,12 @@ jobs:
     name: build
     runs-on: ubuntu-latest
     steps:
+      - uses: docker/setup-qemu-action@v1
+        name: set up QEMU
+        id: qemu
+        with:
+          image: tonistiigi/binfmt:latest
+          platforms: all
       - uses: earthly/actions-setup@v1
         with:
           version: "latest" # or pin to an specific version, e.g. "v0.6.10"
