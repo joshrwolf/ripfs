@@ -25,4 +25,5 @@ universal_binaries:
 
 release:
   extra_files:
-    - glob: offline/*
+    - glob: ./offline/payload.tar.gz
+      name_template: offline-payload.tar.gz
