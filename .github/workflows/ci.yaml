@@ -35,7 +35,7 @@ jobs:
         run: earthly --ci +publish-images --GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
 
       - name: build-offline-payload
-        run: earthly --ci +offline-payload
+        run: earthly --use-inline-cache --save-inline-cache +offline-payload
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
