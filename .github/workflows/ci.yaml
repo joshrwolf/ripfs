@@ -18,15 +18,27 @@ jobs:
       - uses: earthly/actions-setup@v1
         with:
           version: "latest" # or pin to an specific version, e.g. "v0.6.10"
-      - name: Login to GHCR
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v1
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/checkout@v2
       - name: earthly version
         run: earthly --version
+
       - name: build
-        run: earthly --ci +publish --GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+        run: earthly --ci +publish-images --GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+
+      - name: build-offline-payload
+        run: earthly --ci +offline-payload
+
+      - name: Fetch all tags
+        run: git fetch --force --tags
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v2
+        with:
+          distribution: goreleaser
+          version: latest
+          args: release --rm-dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

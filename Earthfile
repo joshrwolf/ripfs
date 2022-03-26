@@ -30,11 +30,6 @@ setup:
     COPY internal/ internal/
     COPY config/ config/
 
-    COPY +busybox-linux-amd64/busybox internal/k8s/offline/payload/busybox-linux-amd64
-    COPY +busybox-linux-arm64/busybox internal/k8s/offline/payload/busybox-linux-arm64
-    # COPY +busybox-linux-arm-v6/busybox internal/k8s/offline/payload/busybox-linux-arm-v6
-    # COPY +busybox-linux-arm-v7/busybox internal/k8s/offline/payload/busybox-linux-arm-v7
-
 build-images:
     FROM +setup
 
@@ -45,7 +40,7 @@ build-images:
     RUN ./ko build ./cmd/ripfs --push=false --sbom spdx --platform linux/amd64,linux/arm64,linux/arm/v6,linux/arm/v7 --oci-layout-path oci
     SAVE ARTIFACT oci
 
-publish:
+publish-images:
     FROM +setup
 
     ARG GGCR_EXPERIMENT_ESTARGZ=1
@@ -55,18 +50,13 @@ publish:
     COPY +ko/ko .
     RUN ./ko build ./cmd/ripfs --sbom spdx --platform linux/amd64,linux/arm64,linux/arm/v6,linux/arm/v7
 
-    COPY .goreleaser.yaml .goreleaser.yaml
-
-    COPY +offline-payload/payload.tar.gz dist/offline/offline-payload.tar.gz
-    RUN goreleaser build --rm-dist
-
 offline-payload:
     FROM busybox
     WORKDIR /payload
 
     COPY +build-images/oci oci/
     RUN tar -C /payload -czvf payload.tar.gz /payload
-    SAVE ARTIFACT payload.tar.gz
+    SAVE ARTIFACT payload.tar.gz AS LOCAL offline/payload.tar.gz
 
 busybox:
     FROM alpine:3.15.0
@@ -131,19 +121,19 @@ busybox:
 
 busybox-linux-amd64:
     FROM --platform=linux/amd64 +busybox
-    SAVE ARTIFACT /tmp/busybox/busybox
+    SAVE ARTIFACT /tmp/busybox/busybox AS LOCAL internal/k8s/offline/payload/busybox-linux-amd64
 
 busybox-linux-arm64:
     FROM --platform=linux/arm64 +busybox
-    SAVE ARTIFACT /tmp/busybox/busybox
+    SAVE ARTIFACT /tmp/busybox/busybox AS LOCAL internal/k8s/offline/payload/busybox-linux-arm64
 
 busybox-linux-arm-v6:
     FROM --platform=linux/arm/v6 +busybox
-    SAVE ARTIFACT /tmp/busybox/busybox
+    SAVE ARTIFACT /tmp/busybox/busybox AS LOCAL internal/k8s/offline/payload/busybox-linux-arm-v6
 
 busybox-linux-arm-v7:
     FROM --platform=linux/arm/v7 +busybox
-    SAVE ARTIFACT /tmp/busybox/busybox
+    SAVE ARTIFACT /tmp/busybox/busybox AS LOCAL internal/k8s/offline/payload/busybox-linux-arm-v7
 
 busybox-offline-payload-all:
     BUILD +busybox-linux-amd64

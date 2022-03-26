@@ -25,4 +25,4 @@ universal_binaries:
 
 release:
   extra_files:
-    - glob: dist/offline/*
+    - glob: offline/*

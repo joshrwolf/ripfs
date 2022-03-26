@@ -10,7 +10,9 @@ bin
 testbin/*
 
 # Builds
+internal/k8s/offline/payload/*
 dist/
+offline/
 
 # Test binary, build with `go test -c`
 *.test
