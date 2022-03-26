@@ -29,4 +29,4 @@ jobs:
       - name: earthly version
         run: earthly --version
       - name: build
-        run: earthly --ci +publish-images --GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+        run: earthly --ci +publish --GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"

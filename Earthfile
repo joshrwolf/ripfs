@@ -45,7 +45,7 @@ build-images:
     RUN ./ko build ./cmd/ripfs --push=false --sbom spdx --platform linux/amd64,linux/arm64,linux/arm/v6,linux/arm/v7 --oci-layout-path oci
     SAVE ARTIFACT oci
 
-publish-images:
+publish:
     FROM +setup
 
     ARG GGCR_EXPERIMENT_ESTARGZ=1
@@ -53,17 +53,7 @@ publish-images:
     ARG GITHUB_TOKEN
 
     COPY +ko/ko .
-
     RUN ./ko build ./cmd/ripfs --sbom spdx --platform linux/amd64,linux/arm64,linux/arm/v6,linux/arm/v7
-
-build-bin:
-    FROM +setup
-
-    COPY .goreleaser.yaml .goreleaser.yaml
-    RUN goreleaser build --rm-dist --snapshot
-
-publish-bin:
-    FROM +setup
 
     COPY .goreleaser.yaml .goreleaser.yaml
 
@@ -77,10 +67,6 @@ offline-payload:
     COPY +build-images/oci oci/
     RUN tar -C /payload -czvf payload.tar.gz /payload
     SAVE ARTIFACT payload.tar.gz
-
-publish:
-    BUILD +publish-images
-    BUILD +publish-bin
 
 busybox:
     FROM alpine:3.15.0
